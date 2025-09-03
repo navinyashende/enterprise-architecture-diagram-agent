@@ -1,0 +1,330 @@
+# Enterprise Architecture Diagram Agent Configuration
+
+quarkus:
+  application:
+    name: enterprise-architecture-diagram-agent
+    version: 1.0.0-SNAPSHOT
+  
+  # HTTP Configuration
+  http:
+    port: 8080
+    cors:
+      ~: true
+      origins: "*"
+      methods: GET,PUT,POST,DELETE,OPTIONS
+      headers: "*"
+  
+  # Database Configuration
+  datasource:
+    db-kind: postgresql
+    username: ${POSTGRES_USER:arch_agent}
+    password: ${POSTGRES_PASSWORD:arch_agent_pass}
+    jdbc:
+      url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:arch_agent_db}
+      max-size: 20
+      min-size: 5
+  
+  hibernate-orm:
+    database:
+      generation: update
+    log:
+      sql: false
+    packages: com.enterprise.arch.agent.model
+  
+  # Redis Configuration
+  redis:
+    hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: ${REDIS_DATABASE:0}
+    timeout: 10s
+  
+  # OpenAPI/Swagger Configuration
+  smallrye-openapi:
+    info-title: Enterprise Architecture Diagram Agent API
+    info-version: 1.0.0
+    info-description: AI-powered enterprise architecture diagram generator
+    info-contact-email: support@enterprise.com
+    servers:
+      - url: http://localhost:8080
+        description: Development server
+      - url: https://arch-agent.enterprise.com
+        description: Production server
+  
+  # Health Check Configuration
+  smallrye-health:
+    ui:
+      enable: true
+      root-path: /health-ui
+  
+  # Metrics Configuration
+  micrometer:
+    export:
+      prometheus:
+        enabled: true
+        path: /metrics
+    binder:
+      jvm: true
+      system: true
+      http-server: true
+  
+  # Container Image Configuration
+  container-image:
+    registry: ${CONTAINER_REGISTRY:docker.io}
+    group: ${CONTAINER_GROUP:enterprise}
+    name: ${quarkus.application.name}
+    tag: ${quarkus.application.version}
+  
+  # Native Build Configuration
+  native:
+    additional-build-args: --allow-incomplete-classpath,--report-unsupported-elements-at-runtime
+  
+  # Logging Configuration
+  log:
+    level: INFO
+    min-level: DEBUG
+    category:
+      "com.enterprise.arch.agent": DEBUG
+      "org.gitlab4j": INFO
+      "dev.langchain4j": INFO
+    console:
+      enable: true
+      format: "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] (%t) %s%e%n"
+      json: false
+    file:
+      enable: false
+      path: /tmp/arch-agent.log
+      format: "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] (%t) %s%e%n"
+      rotation:
+        max-file-size: 100M
+        max-backup-index: 5
+
+# GitLab Configuration
+gitlab:
+  url: ${GITLAB_URL:https://gitlab.com}
+  token: ${GITLAB_TOKEN:}
+  webhook:
+    secret: ${GITLAB_WEBHOOK_SECRET:arch-agent-secret}
+  api:
+    timeout: 30s
+    max-retries: 3
+    rate-limit:
+      requests-per-minute: 1000
+
+# AI Configuration
+ai:
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-pro}
+    project-id: ${GOOGLE_CLOUD_PROJECT_ID:}
+    location: ${GOOGLE_CLOUD_LOCATION:us-central1}
+    temperature: 0.1
+    max-tokens: 4096
+    timeout: 60s
+    max-retries: 3
+  
+  langchain4j:
+    chat-model:
+      provider: vertex-ai-gemini
+      temperature: 0.1
+      max-tokens: 4096
+
+# Codebase Analysis Configuration
+analysis:
+  supported-languages:
+    - java
+    - python
+    - javascript
+    - typescript
+    - kotlin
+    - scala
+    - go
+    - rust
+  
+  file-size-limit: 10MB
+  repository-size-limit: 1GB
+  analysis-timeout: 300s
+  
+  patterns:
+    mvc: true
+    microservices: true
+    layered: true
+    event-driven: true
+    repository: true
+    factory: true
+    singleton: true
+    observer: true
+  
+  exclusions:
+    directories:
+      - .git
+      - node_modules
+      - target
+      - build
+      - dist
+      - .idea
+      - .vscode
+    file-patterns:
+      - "*.log"
+      - "*.tmp"
+      - "*.cache"
+      - "*.min.js"
+      - "*.min.css"
+
+# Diagram Configuration
+diagram:
+  mermaid:
+    max-nodes: 100
+    max-edges: 200
+    layout-optimization: true
+    validation: true
+  
+  types:
+    component:
+      enabled: true
+      max-depth: 5
+    sequence:
+      enabled: true
+      max-interactions: 50
+    class:
+      enabled: true
+      max-classes: 30
+    deployment:
+      enabled: true
+    flowchart:
+      enabled: true
+    er:
+      enabled: true
+    system-context:
+      enabled: true
+  
+  output:
+    format: markdown
+    embed-images: false
+    include-metadata: true
+
+# Cache Configuration
+cache:
+  analysis:
+    ttl: 3600s
+    max-size: 1000
+  
+  diagrams:
+    ttl: 7200s
+    max-size: 500
+  
+  gitlab-data:
+    ttl: 1800s
+    max-size: 2000
+
+# Security Configuration
+security:
+  api:
+    enabled: true
+    token-header: X-API-Token
+    rate-limiting:
+      enabled: true
+      requests-per-minute: 100
+  
+  encryption:
+    algorithm: AES-256-GCM
+    key: ${ENCRYPTION_KEY:}
+
+# Scheduler Configuration
+scheduler:
+  repository-sync:
+    enabled: true
+    cron: "0 */30 * * * ?"  # Every 30 minutes
+  
+  diagram-refresh:
+    enabled: true
+    cron: "0 0 2 * * ?"     # Daily at 2 AM
+  
+  cleanup:
+    enabled: true
+    cron: "0 0 4 * * SUN"   # Weekly on Sunday at 4 AM
+
+# Monitoring Configuration
+monitoring:
+  metrics:
+    custom:
+      enabled: true
+      prefix: "arch_agent"
+  
+  tracing:
+    enabled: false
+    jaeger:
+      endpoint: ${JAEGER_ENDPOINT:http://localhost:14268/api/traces}
+  
+  alerting:
+    enabled: false
+    webhook-url: ${ALERT_WEBHOOK_URL:}
+
+# Development Profile
+"%dev":
+  quarkus:
+    log:
+      level: DEBUG
+      category:
+        "com.enterprise.arch.agent": DEBUG
+        "io.quarkus": INFO
+    
+    datasource:
+      devservices:
+        enabled: true
+        image-name: postgres:15
+        username: dev_user
+        password: dev_pass
+        db-name: arch_agent_dev
+    
+    redis:
+      devservices:
+        enabled: true
+  
+  gitlab:
+    url: http://localhost:8090  # Local GitLab for development
+  
+  ai:
+    gemini:
+      model: gemini-pro
+
+# Test Profile
+"%test":
+  quarkus:
+    datasource:
+      db-kind: h2
+      username: sa
+      password: 
+      jdbc:
+        url: jdbc:h2:mem:test_db;DB_CLOSE_DELAY=-1
+    
+    hibernate-orm:
+      database:
+        generation: drop-and-create
+  
+  # Disable external services for tests
+  gitlab:
+    url: http://mock-gitlab
+    token: test-token
+  
+  ai:
+    gemini:
+      api-key: test-key
+      model: gemini-pro
+
+# Production Profile  
+"%prod":
+  quarkus:
+    log:
+      level: INFO
+      file:
+        enable: true
+    
+    native:
+      additional-build-args: --static,--libc=musl
+  
+  # Production-specific configurations
+  monitoring:
+    tracing:
+      enabled: true
+    alerting:
+      enabled: true
