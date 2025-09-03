@@ -1,0 +1,92 @@
+# Enterprise Architecture Diagram Agent - Cursor Rules
+
+## Project Overview
+This is an AI-powered enterprise architecture diagram generator that analyzes codebases and creates Mermaid diagrams automatically.
+
+## Code Style Guidelines
+
+### Java/Quarkus
+- Use Java 21+ features where appropriate
+- Follow Google Java Style Guide
+- Use Quarkus annotations and patterns
+- Implement proper error handling with custom exceptions
+- Use SLF4J for logging
+- Write comprehensive JavaDoc for public APIs
+
+### Package Structure
+```
+com.enterprise.arch.agent
+├── analyzer/          # Codebase analysis logic
+├── config/           # Configuration classes
+├── diagram/          # Diagram generation logic
+├── gitlab/           # GitLab integration
+├── model/            # Domain models and DTOs
+├── service/          # Business logic services
+├── web/              # REST endpoints
+└── utils/            # Utility classes
+```
+
+### Best Practices
+- Use dependency injection with @Inject
+- Implement proper transaction boundaries
+- Use Quarkus health checks and metrics
+- Follow reactive programming patterns where applicable
+- Write unit and integration tests
+- Use Quarkus dev services for testing
+
+### AI/LLM Integration
+- Use Langchain4j for LLM interactions
+- Implement proper prompt engineering
+- Handle AI model failures gracefully
+- Cache LLM responses when appropriate
+- Use structured outputs for diagram generation
+
+### GitLab Integration
+- Use GitLab REST API v4
+- Implement proper authentication and authorization
+- Handle API rate limiting
+- Use webhooks for real-time updates
+- Support both GitLab.com and self-hosted instances
+
+### Testing
+- Write unit tests for all business logic
+- Use @QuarkusTest for integration tests
+- Mock external dependencies
+- Test AI model interactions with fixed responses
+- Include performance tests for large codebases
+
+### Documentation
+- Keep README.md updated
+- Document API endpoints with OpenAPI
+- Include architecture diagrams in docs/
+- Provide configuration examples
+- Write deployment guides
+
+### Security
+- Never commit API keys or secrets
+- Use Quarkus config for sensitive data
+- Implement proper input validation
+- Follow OWASP guidelines
+- Use HTTPS for all external communications
+
+## File Patterns to Focus On
+- `src/main/java/**/*.java` - Core application code
+- `src/test/java/**/*.java` - Test code
+- `src/main/resources/application.yml` - Configuration
+- `docs/**/*.md` - Documentation
+- `.github/workflows/**/*.yml` - CI/CD pipelines
+- `pom.xml` - Maven dependencies
+
+## Common Commands
+- `./mvnw quarkus:dev` - Start development mode
+- `./mvnw clean test` - Run tests
+- `./mvnw clean package` - Build application
+- `docker build -t arch-agent .` - Build Docker image
+
+## AI Assistant Guidelines
+- Always consider enterprise-grade requirements
+- Implement proper error handling and logging
+- Focus on scalability and performance
+- Follow cloud-native patterns
+- Consider security implications
+- Write production-ready code
