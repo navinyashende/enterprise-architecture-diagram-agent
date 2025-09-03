@@ -1,0 +1,192 @@
+# Docker Compose for Enterprise Architecture Diagram Agent
+# Development and testing environment
+
+version: '3.8'
+
+services:
+  # Main application
+  arch-agent:
+    build:
+      context: .
+      dockerfile: src/main/docker/Dockerfile.jvm
+    container_name: enterprise-arch-agent
+    ports:
+      - "8080:8080"
+    environment:
+      # Database configuration
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: arch_agent_db
+      POSTGRES_USER: arch_agent
+      POSTGRES_PASSWORD: arch_agent_pass
+      
+      # Redis configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # GitLab configuration (set these in .env file)
+      GITLAB_URL: ${GITLAB_URL:-https://gitlab.com}
+      GITLAB_TOKEN: ${GITLAB_TOKEN:-}
+      
+      # AI configuration (set these in .env file)
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-pro}
+      GOOGLE_CLOUD_PROJECT_ID: ${GOOGLE_CLOUD_PROJECT_ID:-}
+      
+      # Application configuration
+      QUARKUS_PROFILE: docker
+      QUARKUS_LOG_LEVEL: INFO
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./data/repositories:/deployments/data/repositories
+      - ./data/diagrams:/deployments/data/diagrams
+      - ./logs:/deployments/logs
+    networks:
+      - arch-agent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/q/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    container_name: arch-agent-postgres
+    environment:
+      POSTGRES_DB: arch_agent_db
+      POSTGRES_USER: arch_agent
+      POSTGRES_PASSWORD: arch_agent_pass
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - arch-agent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arch_agent -d arch_agent_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis cache
+  redis:
+    image: redis:7-alpine
+    container_name: arch-agent-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./config/redis.conf:/etc/redis/redis.conf:ro
+    command: redis-server /etc/redis/redis.conf
+    networks:
+      - arch-agent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: arch-agent-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - arch-agent-network
+    restart: unless-stopped
+
+  # Grafana dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: arch-agent-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - arch-agent-network
+    restart: unless-stopped
+
+  # Jaeger tracing (optional)
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: arch-agent-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # HTTP collector
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+    networks:
+      - arch-agent-network
+    restart: unless-stopped
+    profiles:
+      - tracing
+
+  # GitLab CE for local development (optional)
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    container_name: arch-agent-gitlab
+    hostname: gitlab.local
+    ports:
+      - "8090:80"
+      - "8443:443"
+      - "8022:22"
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.local:8090'
+        gitlab_rails['gitlab_shell_ssh_port'] = 8022
+        gitlab_rails['initial_root_password'] = 'password123'
+    volumes:
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
+    networks:
+      - arch-agent-network
+    restart: unless-stopped
+    profiles:
+      - gitlab
+    shm_size: 256m
+
+networks:
+  arch-agent-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  gitlab_config:
+    driver: local
+  gitlab_logs:
+    driver: local
+  gitlab_data:
+    driver: local
