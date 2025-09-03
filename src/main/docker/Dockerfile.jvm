@@ -1,0 +1,82 @@
+# Enterprise Architecture Diagram Agent - JVM Dockerfile
+# Multi-stage build for optimized production image
+
+FROM registry.access.redhat.com/ubi8/openjdk-21:1.17 AS build
+
+USER root
+
+# Install required packages
+RUN microdnf install -y git curl wget unzip && \
+    microdnf clean all
+
+# Set up Maven
+ENV MAVEN_VERSION=3.9.6
+ENV MAVEN_HOME=/opt/maven
+RUN curl -fsSL https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz | \
+    tar -xzf - -C /opt && \
+    ln -s /opt/apache-maven-${MAVEN_VERSION} ${MAVEN_HOME} && \
+    ln -s ${MAVEN_HOME}/bin/mvn /usr/local/bin/mvn
+
+# Copy source code
+WORKDIR /build
+COPY pom.xml .
+COPY src ./src
+
+# Build application
+RUN mvn clean package -DskipTests -Dquarkus.package.type=uber-jar
+
+# Production stage
+FROM registry.access.redhat.com/ubi8/openjdk-21-runtime:1.17
+
+# Metadata
+LABEL maintainer="Enterprise Architecture Team" \
+      version="1.0.0" \
+      description="AI-powered enterprise architecture diagram generator" \
+      vendor="Enterprise" \
+      licenses="MIT"
+
+# Environment variables
+ENV LANGUAGE='en_US:en' \
+    LC_ALL='en_US.UTF-8' \
+    JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager" \
+    JAVA_APP_JAR="/deployments/app.jar"
+
+# Create application user
+USER root
+RUN useradd -r -u 1001 -g 0 -d /deployments -s /sbin/nologin arch-agent && \
+    mkdir -p /deployments && \
+    chown -R 1001:0 /deployments && \
+    chmod -R g+rwX /deployments
+
+# Install additional tools for code analysis
+RUN microdnf install -y git python3 python3-pip nodejs npm && \
+    pip3 install --no-cache-dir tree-sitter && \
+    npm install -g @babel/parser typescript && \
+    microdnf clean all
+
+# Copy application
+COPY --from=build --chown=1001:0 /build/target/quarkus-app/lib/ /deployments/lib/
+COPY --from=build --chown=1001:0 /build/target/quarkus-app/*.jar /deployments/
+COPY --from=build --chown=1001:0 /build/target/quarkus-app/app/ /deployments/app/
+COPY --from=build --chown=1001:0 /build/target/quarkus-app/quarkus/ /deployments/quarkus/
+
+# Create directories for application data
+RUN mkdir -p /deployments/data/repositories /deployments/data/diagrams /deployments/data/cache && \
+    chown -R 1001:0 /deployments/data && \
+    chmod -R g+rwX /deployments/data
+
+# Switch to application user
+USER 1001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8080/q/health/ready || exit 1
+
+# Expose port
+EXPOSE 8080
+
+# Set working directory
+WORKDIR /deployments
+
+# Run the application
+ENTRYPOINT [ "java", "-jar", "quarkus-run.jar" ]
